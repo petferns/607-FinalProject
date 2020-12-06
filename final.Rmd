@@ -1,0 +1,347 @@
+---
+title: "DATA607, Final Project - COVID19 Impact of US Businesses"
+author: "Peter Fernandes"
+date: "12/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+COVID19 pandemic has definitely impacted in every aspect of our life in one way or the other with fewer and as well as larger implications.
+In this project I would like to study the impact of the COVID19 pandemic across businesses in USA. With the data from NASDAQ trading I will try to draw conclusions as to how the business sectors have been impacted.  
+
+
+# Data source
+
+I tried different ways to get the data of NASDAQ and upon testing I found the below 2 data sources appropriate for me. I had to do data cleaning and transformation in order to fit the data for my analysis.
+
+In order to get the SYMBOLS data I will use the API from NASDAQ. I will do the data cleaning in order to get the right data I want. I found this API when I was trying to scrape data from this page https://www.nasdaq.com/market-activity/stocks/screener
+
+For getting the historical close price for the NASDAQ SYMBOLS I will make use  of the package BatchGetSymbols
+
+
+# Loading of the required libraries
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+library(jsonlite)
+library(httr)
+library(DT)
+library(BatchGetSymbols)
+library(ggplot2)
+library(ggpubr)
+```
+
+
+# COVID19 Impact on - Transportation sector
+
+I will see how the Transportation sector has impacted by COVID19, I will see how did this sector behaved 3-months before March 2020 and 3-months after March 2020 considering March as the major lowdown month.
+
+## Firstly, I will get all the symbols of Transportation sector by using the API
+
+```{r warning=FALSE, error=FALSE}
+
+#In the query string of the API limit parameter is set to total companies in Transportation sector and I get this from the webpage mentioned above. Exchange parameter is to set for which exchange house you want to query NASDAQ/ NYSE/ AMEX.  
+
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=56&exchange=NASDAQ&sector=transportation")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+#df$symbol
+#View(df)
+head(dfSymbols$symbol)
+```
+
+## Secondly, I use the package in order to get the historical close price for the list of symbols from above.
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+# set the first and last dates dates
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+#call the function by setting the parameters
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') ) # cache in tempdir()
+
+head(l.out$df.tickers)
+```
+
+## Thirdly, transform and clean up the data
+
+```{r warning=FALSE, error=FALSE}
+#Transform the data frame in order to get the per day max close price
+dfTransform <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+#Rename the columns 1,2,3 
+
+names(dfTransform)[1]= "refdate"
+names(dfTransform)[2]= "symbol"
+names(dfTransform)[3]= "priceclose"
+
+head(dfTransform)
+```
+
+## Plotting of the analysis over ggplot to visualize the data
+
+We see from the below plot that almost all of the transportation companies had a downward trend during the March-April. As more and more people were confined to their homes transportation sector suffered.
+
+```{r warning=FALSE, error=FALSE}
+
+ggplot(data = dfTransform, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Transportation")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+```
+
+
+# COVID19 Impact on - Healthcare sector
+
+I assume this is the one sector which would have benefited most during the pandemic. I will do the similar steps as done above and lets see how it concludes.
+
+**From the plot below we see even in Healthcare sector there was largely downward trend expect for a few. It could be that even though the healthcare industry was doing well buying of the shares didn't happen due to no money or fear among the people about the pandemic.**
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=885&exchange=NASDAQ&sector=health_care")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+head(dfSymbols$symbol)
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+#call the function by setting the parameters
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') ) # cache in tempdir()
+
+#head(l.out$df.tickers)
+dfTransform <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+#Rename the columns 1,2,3 
+
+names(dfTransform)[1]= "refdate"
+names(dfTransform)[2]= "symbol"
+names(dfTransform)[3]= "priceclose"
+
+ggplot(data = dfTransform, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Healthcare")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+```
+
+# Impact on - Energy, Technology, Consumer services and Public utilities
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+#ENERGY
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=57&exchange=NASDAQ&sector=energy")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') )
+dfTransformE <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+names(dfTransformE)[1]= "refdate"
+names(dfTransformE)[2]= "symbol"
+names(dfTransformE)[3]= "priceclose"
+
+#TECHNOLOGY
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=489&exchange=NASDAQ&sector=technology")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') )
+
+
+
+dfTransformT <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+names(dfTransformT)[1]= "refdate"
+names(dfTransformT)[2]= "symbol"
+names(dfTransformT)[3]= "priceclose"
+
+#Consumer services
+
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=376&exchange=NASDAQ&sector=consumer_services")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') )
+
+
+
+dfTransformC <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+names(dfTransformC)[1]= "refdate"
+names(dfTransformC)[2]= "symbol"
+names(dfTransformC)[3]= "priceclose"
+
+#Public utilities
+
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=65&exchange=NASDAQ&sector=public_utilities")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') )
+
+
+
+dfTransformP <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+names(dfTransformP)[1]= "refdate"
+names(dfTransformP)[2]= "symbol"
+names(dfTransformP)[3]= "priceclose"
+```
+
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+
+energy <- ggplot(data = dfTransformE, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Energy")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+tech <- ggplot(data = dfTransformT, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Technology")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+cs <- ggplot(data = dfTransformC, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Consumer services")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+pu <- ggplot(data = dfTransformP, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Public utilities")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+sectors_plot <- ggarrange(energy, tech, cs, pu,
+                    
+                    ncol = 2, nrow = 2)
+sectors_plot
+```
+
+# Mega&large Versus Small&Micro Market capital
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+
+#Mega and Large Market cap.
+
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=252&exchange=NASDAQ&marketcap=mega|large")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') )
+
+
+
+dfTransformML <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+names(dfTransformML)[1]= "refdate"
+names(dfTransformML)[2]= "symbol"
+names(dfTransformML)[3]= "priceclose"
+
+#Small and Micro Market cap.
+
+url <- paste0("https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=1788&exchange=NASDAQ&marketcap=small|micro")
+
+symbols <- fromJSON(url, flatten = TRUE)
+dfSymbols <- symbols$data$table$rows
+
+first.date <- Sys.Date() - 371 #01-Dec-2019
+last.date <- Sys.Date()- 159   #30-Jun-2020
+freq.data <- 'monthly'
+
+l.out <- BatchGetSymbols(tickers = dfSymbols$symbol, 
+                         first.date = first.date,
+                         last.date = last.date, 
+                         freq.data = freq.data,
+                         cache.folder = file.path(tempdir(), 
+                                                  'BGS_Cache') )
+
+
+
+dfTransformSM <- l.out$df.tickers %>% group_by(ref.date,ticker) %>%summarise(max(price.close))
+
+names(dfTransformSM)[1]= "refdate"
+names(dfTransformSM)[2]= "symbol"
+names(dfTransformSM)[3]= "priceclose"
+```
+
+```{r warning=FALSE, error=FALSE, message=FALSE}
+library(ggpubr)
+ml <- ggplot(data = dfTransformML, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Macro&Large")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+sm <- ggplot(data = dfTransformSM, mapping = aes(x = refdate, y = priceclose)) + labs(x="Month", y="Close Price", title="Small&Medium")+
+    geom_line( aes(color = symbol),show.legend = FALSE)
+
+
+cap_plot <- ggarrange(ml, sm, 
+                    
+                    ncol = 2, nrow = 1)
+cap_plot
+```
+
+# Conclusion
+
+From the analysis of the NASDAQ data we see a negative impact of COVID19 pandemic on businesses across sectors. All of the companies show a downward trend during the initial days of COVID.
+Health care industry has also been negatively affected - in this case it could be that the health care industry would have been making good business because of the pandemic but the buying of shares might have not happened due to less money or fear among people. This risk of error I had already mentioned in my proposal.
+Energy sector seems to have a large drop which makes sense as more and more industries were not functioning fully. Technology sector too had a decline and on path of recovery.
+
+On comparing Macro&Large with Small&Medium market capitals, we see a downward trend in both cases.**Worrying thing here is the former looks on a path of recovery where as the later is going downwards. Unless there is proper funding and care from the government towards Medium and Small caps these companies would be out of business soon.**
+
+
